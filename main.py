@@ -9,7 +9,7 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 
 # --- Set your OpenAI API key ---
-os.environ["OPENAI_API_KEY"] = "your_api_key"
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="PDF Q&A", layout="wide")

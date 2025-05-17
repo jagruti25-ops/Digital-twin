@@ -12,7 +12,7 @@ from gtts import gTTS
 import uuid
 
 # Set API Key
-os.environ["OPENAI_API_KEY"] = 'your_api_key'
+os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
 # UI
 st.set_page_config(page_title="PDF Q&A", layout="wide")
