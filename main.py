@@ -1,104 +1,48 @@
-# 🧘 Spiritual Teachings Chatbot - PDF + RAG Version with Local LLM + Gradio UI (CPU Friendly)
-
-# Requirements:
-# pip install sentence-transformers faiss-cpu pymupdf transformers gradio
-
-import faiss
-import fitz  # PyMuPDF
-import numpy as np
 import os
-import torch
-from sentence_transformers import SentenceTransformer
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-import gradio as gr
+import streamlit as st
 
-# ----------------------
-# Load Embedding Model
-# ----------------------
-model = SentenceTransformer('all-MiniLM-L6-v2')
+from langchain.chat_models import ChatOpenAI
+from langchain.document_loaders import PyPDFLoader
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.vectorstores import FAISS
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.chains import RetrievalQA
 
-# ----------------------
-# Load and Extract Text from PDF
-# ----------------------
-def extract_text_from_pdf(file_path):
-    doc = fitz.open(file_path)
-    text_blocks = []
-    for page in doc:
-        text_blocks.append(page.get_text())
-    doc.close()
-    return "\n".join(text_blocks)
+# --- Set your OpenAI API key ---
+os.environ["OPENAI_API_KEY"] = "your_api_key"
 
-# ----------------------
-# Chunk Text into Paragraphs
-# ----------------------
-def chunk_text(text, max_length=500):
-    chunks = text.split("\n\n")
-    return [chunk.strip() for chunk in chunks if 30 < len(chunk.strip()) < max_length]
+# --- Streamlit UI ---
+st.set_page_config(page_title="PDF Q&A", layout="wide")
+st.title("💮 Ask Questions and seek answers from Guruji")
 
-# ----------------------
-# Load, Embed, and Index
-# ----------------------
-def load_pdf_and_build_index(pdf_path):
-    text = extract_text_from_pdf(pdf_path)
-    chunks = chunk_text(text)
-    embeddings = model.encode(chunks)
-    index = faiss.IndexFlatL2(embeddings[0].shape[0])
-    index.add(np.array(embeddings))
-    return chunks, index, text
+query = st.text_input("🌿 How can we assist you?")
 
-# ----------------------
-# Load Local LLM (CPU-Friendly Model)
-# ----------------------
-def load_local_llm():
-    model_name = "sshleifer/tiny-gpt2"  # Extremely small and CPU-friendly
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, device=-1)
-    return pipe
+# --- Load and process the fixed PDF ---
+PDF_PATH = "data/Teachings_of_the_Bhagavadgita.pdf"
 
-llm_pipe = load_local_llm()
+if query:
+    if not os.path.exists(PDF_PATH):
+        st.error(f"File not found: {PDF_PATH}")
+    else:
+        with st.spinner("Processing PDF..."):
+            # Load PDF and split into chunks
+            loader = PyPDFLoader(PDF_PATH)
+            pages = loader.load()
+            splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
+            docs = splitter.split_documents(pages)
 
-# ----------------------
-# Query LLM with Context
-# ----------------------
-def query_llm_with_context(query, context):
-    prompt = f"""
-You are a wise assistant answering questions based only on the teachings of saints.
-Use the context provided below to answer the user's question.
+            # Create vectorstore
+            embeddings = OpenAIEmbeddings()
+            vectorstore = FAISS.from_documents(docs, embeddings)
 
-Context:
-{context}
+            # Build retrieval-based QA chain
+            retriever = vectorstore.as_retriever()
+            llm = ChatOpenAI(model="gpt-3.5-turbo")
+            qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
-Question: {query}
-Answer:
-"""
-    response = llm_pipe(prompt, max_new_tokens=150, do_sample=True)[0]['generated_text']
-    return response.split("Answer:")[-1].strip()
+            # Get answer
+            response = qa_chain.run(query)
 
-# ----------------------
-# Gradio UI
-# ----------------------
-pdf_path = "data/Bhagavad-gita.pdf"
-chunks, index, full_text = [], None, ""
+        st.success("Answer:")
+        st.markdown(f"**{response}**")
 
-if os.path.exists(pdf_path):
-    chunks, index, full_text = load_pdf_and_build_index(pdf_path)
-
-    def answer_question(user_query):
-        query_vec = model.encode([user_query])
-        D, I = index.search(np.array(query_vec), k=3)
-        top_chunks = [chunks[i] for i in I[0]]
-        context = "\n\n".join(top_chunks)
-        return query_llm_with_context(user_query, context)
-
-    interface = gr.Interface(
-        fn=answer_question,
-        inputs=gr.Textbox(lines=2, placeholder="Ask a spiritual question..."),
-        outputs=gr.Textbox(label="Answer"),
-        title="🧘 Saints' Teachings Chatbot (Tiny GPT-2)",
-        description="Ask a question, and the assistant will respond using only the teachings from your uploaded PDF."
-    )
-
-    interface.launch(debug=True)
-else:
-    print("PDF not found in 'data/' folder. Please add 'saint_teachings.pdf'.")

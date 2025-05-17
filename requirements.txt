@@ -1,0 +1,11 @@
+streamlit 
+langchain 
+openai 
+faiss-cpu 
+PyPDF2
+langchain_community
+tiktoken
+pypdf
+googletrans==4.0.0rc1
+langdetect
+gTTS
