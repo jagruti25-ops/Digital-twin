@@ -97,6 +97,9 @@ if prompt := st.chat_input("🌿 How can we assist you?"):
     audio_file = generate_audio(translated_answer, lang=lang_code)
     st.audio(audio_file, format="audio/mp3")
 
+    if st.button("🔈 Play Answer"):
+        st.audio(audio_file, format="audio/mp3")
+
     with st.chat_message("assistant"):
         st.markdown(translated_answer)
 
