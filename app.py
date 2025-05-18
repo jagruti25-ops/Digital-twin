@@ -33,6 +33,20 @@ selected_lang = language_map[selected_lang_name]
 translator = Translator()
 
 # Load and embed PDF once
+from langchain.prompts import PromptTemplate
+
+opinion_prompt = PromptTemplate.from_template("""
+You are a helpful assistant reading a document. When asked for an opinion, you should form it based on the contents of the document, while using thoughtful and polite language.
+
+Use this context:
+{context}
+
+Here is the user's question:
+{question}
+
+Please provide a well-reasoned response that reflects the content and tone of the document. If the document does not cover the topic, say so politely.
+""")
+
 @st.cache_resource
 def load_chain(pdf_path="data/Teachings_of_the_Bhagavadgita.pdf"):
     loader = PyPDFLoader(pdf_path)
@@ -43,7 +57,7 @@ def load_chain(pdf_path="data/Teachings_of_the_Bhagavadgita.pdf"):
     vectordb = FAISS.from_documents(docs, embeddings)
     retriever = vectordb.as_retriever(search_kwargs={"k": 4})
     llm = ChatOpenAI(model="gpt-3.5-turbo")
-    qa_chain = ConversationalRetrievalChain.from_llm(llm, retriever=retriever, return_source_documents=False)
+    qa_chain = ConversationalRetrievalChain.from_llm(llm, retriever=retriever,combine_docs_chain_kwargs={"prompt": opinion_prompt},return_source_documents=False)
     return qa_chain
 
 def generate_audio(text, lang='en'):
