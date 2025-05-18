@@ -6,19 +6,20 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import FAISS
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chains import ConversationalRetrievalChain
+from langchain.prompts import PromptTemplate
 from langdetect import detect
 from googletrans import Translator
 from gtts import gTTS
 import uuid
 
-# Set API Key
+# Set up Streamlit page config
+st.set_page_config(page_title="🧘‍♂️ Spiritual Chatbot", layout="wide")
+
+# API Key (from secrets)
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
-# UI
-st.set_page_config(page_title="PDF Q&A", layout="wide")
-st.title("💮 Ask Questions and seek answers from Guruji")
 
-# Language selector in sidebar
+# Language selection
 st.sidebar.title("🌍 Language Settings")
 language_map = {
     "English": "en",
@@ -28,25 +29,22 @@ language_map = {
 }
 selected_lang_name = st.sidebar.selectbox("Select your preferred response language:", list(language_map.keys()))
 selected_lang = language_map[selected_lang_name]
-
-# Translator
 translator = Translator()
 
-# Load and embed PDF once
-from langchain.prompts import PromptTemplate
-
-opinion_prompt = PromptTemplate.from_template("""
-You are a helpful assistant reading a document. When asked for an opinion, you should form it based on the contents of the document, while using thoughtful and polite language.
+# Prompt template
+spiritual_prompt_template = PromptTemplate.from_template("""
+You are a wise and thoughtful assistant. When asked about {topic}, respond with spiritual insight, drawing from ancient wisdom and the content of the document.
 
 Use this context:
 {context}
 
-Here is the user's question:
+User's question:
 {question}
 
-Please provide a well-reasoned response that reflects the content and tone of the document. If the document does not cover the topic, say so politely.
+Provide a meaningful, grounded, and topic-relevant answer.
 """)
 
+# Load PDF and prepare vector store
 @st.cache_resource
 def load_chain(pdf_path="data/Teachings_of_the_Bhagavadgita.pdf"):
     loader = PyPDFLoader(pdf_path)
@@ -57,75 +55,81 @@ def load_chain(pdf_path="data/Teachings_of_the_Bhagavadgita.pdf"):
     vectordb = FAISS.from_documents(docs, embeddings)
     retriever = vectordb.as_retriever(search_kwargs={"k": 4})
     llm = ChatOpenAI(model="gpt-3.5-turbo")
-    qa_chain = ConversationalRetrievalChain.from_llm(llm, retriever=retriever,combine_docs_chain_kwargs={"prompt": opinion_prompt},return_source_documents=False)
+    qa_chain = ConversationalRetrievalChain.from_llm(
+        llm=llm,
+        retriever=retriever,
+        combine_docs_chain_kwargs={"prompt": spiritual_prompt_template},
+        return_source_documents=False
+    )
     return qa_chain
 
+# Audio generation
 def generate_audio(text, lang='en'):
     tts = gTTS(text=text, lang=lang)
     filename = f"tts_{uuid.uuid4().hex}.mp3"
     tts.save(filename)
     return filename
 
-# Initialize chat history
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+# Session state setup
 if "qa_chain" not in st.session_state:
     st.session_state.qa_chain = load_chain()
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "selected_topic" not in st.session_state:
+    st.session_state.selected_topic = None
 
-# Display chat history
-for i, (question, answer) in enumerate(st.session_state.chat_history):
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(question)
-    with st.chat_message("assistant", avatar="🌿"):
-        st.markdown(answer)
+# Topic selection page
+if st.session_state.selected_topic is None:
+    st.title("💮 How can we assist you on your spiritual journey?")
+    # Wider & centered buttons
+    col_spacer1, col1, col2, col3, col_spacer2 = st.columns([0.2, 1, 1, 1, 0.2])
 
-# User input
+    with col1:
+        if st.button("🕊️ Moksha", use_container_width=True):
+            st.session_state.selected_topic = "Moksha"
+            st.experimental_rerun()
+    with col2:
+        if st.button("🔗 Relationships", use_container_width=True):
+            st.session_state.selected_topic = "Relationships"
+            st.experimental_rerun()
+    with col3:
+        if st.button("💼 Success", use_container_width=True):
+            st.session_state.selected_topic = "Success"
+            st.experimental_rerun()
 
-col1, col2, col3, col4 = st.columns(4)
+# Chat page
+else:
+    st.title(f"🧘 {st.session_state.selected_topic}")
+    if st.button("🔙 Back to Topic Selection"):
+        st.session_state.selected_topic = None
+        st.session_state.chat_history = []
+        #st.experimental_rerun()
 
-with col1:
-    success_clicked = st.button("💼 Success")
-with col2:
-    relationship_clicked = st.button("💞 Relationships")
-with col3:
-    vedic_clicked = st.button("📜 Vedic Science")
-with col4:
-    vedic_clicked = st.button("🕊️ Moksha")
+    for q, a in st.session_state.chat_history:
+        with st.chat_message("user", avatar="👤"):
+            st.markdown(q)
+        with st.chat_message("assistant", avatar="🌿"):
+            st.markdown(a)
 
-if success_clicked:
-    st.session_state["selected_topic"] = "Success"
-elif relationship_clicked:
-    st.session_state["selected_topic"] = "Relationships"
-elif vedic_clicked:
-    st.session_state["selected_topic"] = "Vedic Science"
-elif vedic_clicked:
-    st.session_state["selected_topic"] = "Moksha"
+    if prompt := st.chat_input(f"🌿 Ask about {st.session_state.selected_topic}..."):
+        with st.chat_message("user", avatar="👤"):
+            st.markdown(prompt)
 
-if prompt := st.chat_input("🌿 How can we assist you on your spiritual journey?"):
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(prompt)
-    if "selected_topic" in st.session_state:
-        st.write(f"You selected **{st.session_state['selected_topic']}**.")
-        user_question = st.chat_input(f"Ask something about {st.session_state['selected_topic']}:")
-
-    # Get answer from LangChain
-    with st.chat_message("assistant", avatar="🌿"):
-        response = st.session_state.qa_chain({"question": prompt, "chat_history": st.session_state.chat_history})
+        response = st.session_state.qa_chain({
+            "question": prompt,
+            "chat_history": st.session_state.chat_history,
+            "topic": st.session_state.selected_topic
+        })
         answer = response["answer"]
-        st.markdown(answer)
 
-    # Translate back to selected language
-    translated_answer = translator.translate(answer, src="en", dest=selected_lang).text
+        translated_answer = translator.translate(answer, src="en", dest=selected_lang).text
 
-    lang_code = selected_lang  # 'en', 'hi', etc.
-    audio_file = generate_audio(translated_answer, lang=lang_code)
-    st.audio(audio_file, format="audio/mp3")
+        with st.chat_message("assistant", avatar="🌿"):
+            st.markdown(answer)
+            st.markdown(f"**🔄 Translated Response ({selected_lang_name}):**")
+            st.markdown(translated_answer)
+            if st.button("🔈 Generate Audio", key=f"audio_btn_{len(st.session_state.chat_history)}"):
+                audio_file = generate_audio(translated_answer, lang=selected_lang)
+                st.audio(audio_file, format="audio/mp3")
 
-    if st.button("🔈 Play Answer"):
-        st.audio(audio_file, format="audio/mp3")
-
-    with st.chat_message("assistant"):
-        st.markdown(translated_answer)
-
-    # Store in session history
-    st.session_state.chat_history.append((prompt, answer))
+        st.session_state.chat_history.append((prompt, translated_answer))
