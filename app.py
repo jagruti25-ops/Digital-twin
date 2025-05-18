@@ -87,15 +87,15 @@ if st.session_state.selected_topic is None:
     with col1:
         if st.button("🕊️ Moksha", use_container_width=True):
             st.session_state.selected_topic = "Moksha"
-            st.experimental_rerun()
+            st.rerun()
     with col2:
         if st.button("🔗 Relationships", use_container_width=True):
             st.session_state.selected_topic = "Relationships"
-            st.experimental_rerun()
+            st.rerun()
     with col3:
         if st.button("💼 Success", use_container_width=True):
             st.session_state.selected_topic = "Success"
-            st.experimental_rerun()
+            st.rerun()
 
 # Chat page
 else:
@@ -126,9 +126,10 @@ else:
 
         with st.chat_message("assistant", avatar="🌿"):
             st.markdown(answer)
-            st.markdown(f"**🔄 Translated Response ({selected_lang_name}):**")
+            if selected_lang_name != "English":
+                st.markdown(f"**🔄 Translated Response ({selected_lang_name}):**")
             st.markdown(translated_answer)
-            if st.button("🔈 Generate Audio", key=f"audio_btn_{len(st.session_state.chat_history)}"):
+            with st.button("🔈 Generate Audio", key=f"audio_btn_{len(st.session_state.chat_history)}"):
                 audio_file = generate_audio(translated_answer, lang=selected_lang)
                 st.audio(audio_file, format="audio/mp3")
 
