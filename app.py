@@ -80,9 +80,33 @@ for i, (question, answer) in enumerate(st.session_state.chat_history):
         st.markdown(answer)
 
 # User input
-if prompt := st.chat_input("🌿 How can we assist you?"):
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    success_clicked = st.button("💼 Success")
+with col2:
+    relationship_clicked = st.button("💞 Relationships")
+with col3:
+    vedic_clicked = st.button("📜 Vedic Science")
+with col4:
+    vedic_clicked = st.button("🕊️ Moksha")
+
+if success_clicked:
+    st.session_state["selected_topic"] = "Success"
+elif relationship_clicked:
+    st.session_state["selected_topic"] = "Relationships"
+elif vedic_clicked:
+    st.session_state["selected_topic"] = "Vedic Science"
+elif vedic_clicked:
+    st.session_state["selected_topic"] = "Moksha"
+
+if prompt := st.chat_input("🌿 How can we assist you on your spiritual journey?"):
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
+    if "selected_topic" in st.session_state:
+        st.write(f"You selected **{st.session_state['selected_topic']}**.")
+        user_question = st.chat_input(f"Ask something about {st.session_state['selected_topic']}:")
 
     # Get answer from LangChain
     with st.chat_message("assistant", avatar="🌿"):
