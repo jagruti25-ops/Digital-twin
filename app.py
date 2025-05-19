@@ -11,6 +11,7 @@ from langdetect import detect
 from googletrans import Translator
 from gtts import gTTS
 import uuid
+import json
 
 # Set up Streamlit page config
 st.set_page_config(page_title="🧘‍♂️ Spiritual Chatbot", layout="wide")
@@ -137,6 +138,29 @@ else:
                 st.markdown(translated_answer)
             else:
                 st.markdown(answer)  # Only show once if same
+        
+        tts = gTTS(translated_answer, lang=selected_lang)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as f:
+            tts.save(f.name)
+        st.audio(f.name, format="audio/mp3")
 
     # Save to history
         st.session_state.chat_history.append((prompt, translated_answer))
+
+    
+
+    if "chat_log" not in st.session_state:
+        st.session_state.chat_log = []
+
+    st.session_state.chat_log.append({
+        "question": prompt,
+        "answer": translated_answer,
+        "topic": st.session_state.selected_topic,
+        "language": selected_lang_name
+        })
+
+# Save to file
+    if st.button("💾 Save Chat to File"):
+        with open("chat_log.json", "w") as f:
+            json.dump(st.session_state.chat_log, f, indent=2)
+        st.success("Chat saved to chat_log.json")
