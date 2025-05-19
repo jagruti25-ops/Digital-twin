@@ -129,8 +129,5 @@ else:
             if selected_lang_name != "English":
                 st.markdown(f"**🔄 Translated Response ({selected_lang_name}):**")
             st.markdown(translated_answer)
-            with st.button("🔈 Generate Audio", key=f"audio_btn_{len(st.session_state.chat_history)}"):
-                audio_file = generate_audio(translated_answer, lang=selected_lang)
-                st.audio(audio_file, format="audio/mp3")
 
         st.session_state.chat_history.append((prompt, translated_answer))
