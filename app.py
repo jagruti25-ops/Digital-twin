@@ -149,18 +149,18 @@ else:
 
     
 
-    if "chat_log" not in st.session_state:
-        st.session_state.chat_log = []
+        if "chat_log" not in st.session_state:
+            st.session_state.chat_log = []
 
-    st.session_state.chat_log.append({
-        "question": prompt,
-        "answer": translated_answer,
-        "topic": st.session_state.selected_topic,
-        "language": selected_lang_name
+        st.session_state.chat_log.append({
+            "question": prompt,
+            "answer": translated_answer,
+            "topic": st.session_state.selected_topic,
+            "language": selected_lang_name
         })
 
-# Save to file
-    if st.button("💾 Save Chat to File"):
-        with open("chat_log.json", "w") as f:
-            json.dump(st.session_state.chat_log, f, indent=2)
-        st.success("Chat saved to chat_log.json")
+    # Save to file
+        if st.button("💾 Save Chat to File"):
+            with open("chat_log.json", "w") as f:
+                json.dump(st.session_state.chat_log, f, indent=2)
+            st.success("Chat saved to chat_log.json")
