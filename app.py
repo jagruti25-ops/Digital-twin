@@ -122,12 +122,21 @@ else:
         })
         answer = response["answer"]
 
-        translated_answer = translator.translate(answer, src="en", dest=selected_lang).text
+        # Translate only if needed
+        if selected_lang != "en":
+            translated_answer = translator.translate(answer, src="en", dest=selected_lang).text
+        else:
+            translated_answer = answer  # Avoid unnecessary translation
 
+    # Show assistant message
         with st.chat_message("assistant", avatar="🌿"):
-            st.markdown(answer)
-            if selected_lang_name != "English":
+        # If language is not English, show both
+            if selected_lang != "en":
+                st.markdown(answer)
                 st.markdown(f"**🔄 Translated Response ({selected_lang_name}):**")
-            st.markdown(translated_answer)
+                st.markdown(translated_answer)
+            else:
+                st.markdown(answer)  # Only show once if same
 
+    # Save to history
         st.session_state.chat_history.append((prompt, translated_answer))
