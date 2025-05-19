@@ -12,6 +12,7 @@ from googletrans import Translator
 from gtts import gTTS
 import uuid
 import json
+import tempfile
 
 # Set up Streamlit page config
 st.set_page_config(page_title="🧘‍♂️ Spiritual Chatbot", layout="wide")
